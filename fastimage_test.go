@@ -38,7 +38,7 @@ func TestGetInfo(t *testing.T) {
 		}
 
 		if got := GetInfo(data); got != c.Info {
-			t.Errorf("get image error, file=%+v want=%+v, got=%+v", c.File, c.Info, got)
+			t.Errorf("get info error, file=%+v want=%+v, got=%+v", c.File, c.Info, got)
 		}
 	}
 }

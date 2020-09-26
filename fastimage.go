@@ -5,30 +5,51 @@ import (
 	"regexp"
 )
 
+// Type represents the type of the image detected, or `Unknown`.
 type Type uint64
 
 const (
+	// Unknown represents an unknown image type
 	Unknown Type = iota
+	// BMP represendts a BMP image
 	BMP
+	// BPM represendts a BPM image
 	BPM
+	// GIF represendts a GIF image
 	GIF
+	// JPEG represendts a JPEG image
 	JPEG
+	// MNG represendts a MNG image
 	MNG
+	// PBM represendts a PBM image
 	PBM
+	// PCX represendts a PCX image
 	PCX
+	// PGM represendts a PGM image
 	PGM
+	// PNG represendts a PNG image
 	PNG
+	// PPM represendts a PPM image
 	PPM
+	// PSD represendts a PSD image
 	PSD
+	// RAS represendts a RAS image
 	RAS
+	// RGB represendts a RGB image
 	RGB
+	// TIFF represendts a TIFF image
 	TIFF
+	// WEBP represendts a WEBP image
 	WEBP
+	// XBM represendts a XBM image
 	XBM
+	// XPM represendts a XPM image
 	XPM
+	// XV represendts a XV image
 	XV
 )
 
+// String return a lower name of image type
 func (t Type) String() string {
 	switch t {
 	case BMP:
@@ -71,13 +92,14 @@ func (t Type) String() string {
 	return ""
 }
 
+// Info holds the type and dismissons of an image
 type Info struct {
 	Type   Type
 	Width  uint32
 	Height uint32
 }
 
-// GetInfo return a image info of data.
+// GetInfo detects a image info of data.
 func GetInfo(p []byte) (info Info) {
 	const minOffset = 80 // 1 pixel gif
 	if len(p) < minOffset {
