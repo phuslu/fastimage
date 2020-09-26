@@ -1,11 +1,7 @@
 package fastimage
 
 import (
-	"bytes"
-	"compress/zlib"
 	"regexp"
-	"strconv"
-	"unsafe"
 )
 
 type Type uint64
@@ -15,10 +11,9 @@ const (
 	BMP
 	BPM
 	GIF
-	JPG
+	JPEG
 	MNG
 	PBM
-	PCD
 	PCX
 	PGM
 	PNG
@@ -27,7 +22,6 @@ const (
 	RAS
 	RGB
 	SVG
-	SWF
 	TIFF
 	WEBP
 	XBM
@@ -90,8 +84,6 @@ func GetInfo(p []byte) (info Info) {
 		switch p[1] {
 		case '1', '2', '3', '4', '5', '6', '7':
 			ppm(p, &info)
-		case 'C':
-			pcd(p, &info)
 		}
 	case '#':
 		if p[1] == 'd' &&
@@ -126,14 +118,6 @@ func GetInfo(p []byte) (info Info) {
 		if p[1] == 'B' && p[2] == 'P' && p[3] == 'S' {
 			psd(p, &info)
 		}
-	case 'F':
-		if p[1] == 'W' && p[2] == 'S' {
-			swf(p, &info)
-		}
-	case 'C':
-		if p[1] == 'W' && p[2] == 'S' {
-			swfmx(p, &info)
-		}
 	case '\x8a':
 		if p[1] == 'M' &&
 			p[2] == 'N' &&
@@ -157,15 +141,8 @@ func GetInfo(p []byte) (info Info) {
 			ras(p, &info)
 		}
 	case '\x0a':
-		if p[1] == '.' && p[2] == '\x01' {
+		if p[2] == '\x01' {
 			pcx(p, &info)
-		}
-	case '<':
-		if p[1] == 's' &&
-			p[2] == 'v' &&
-			p[3] == 'g' &&
-			(p[4] == ' ' || p[4] == '\t') {
-			svg(p, &info)
 		}
 	}
 
@@ -183,7 +160,7 @@ func jpeg(b []byte, info *Info) {
 		case marker != 0xff:
 			return
 		case code >= 0xc0 && code <= 0xc3:
-			info.Type = JPG
+			info.Type = JPEG
 			info.Width = uint32(b[i+3])<<8 | uint32(b[i+4])
 			info.Height = uint32(b[i+1])<<8 | uint32(b[i+2])
 			return
@@ -205,11 +182,14 @@ func webp(b []byte, info *Info) {
 
 	switch b[15] {
 	case ' ':
-		info.Width = (uint32(b[27])<<8 | uint32(b[26])) & 0x3fff
-		info.Height = (uint32(b[29])<<8 | uint32(b[28])) & 0x3fff
+		info.Width = (uint32(b[27])&0x3f)<<8 | uint32(b[26])
+		info.Height = (uint32(b[29])&0x3f)<<8 | uint32(b[28])
+	case 'X':
+		info.Width = (uint32(b[27])&0x3f)<<8 | uint32(b[26])
+		info.Height = (uint32(b[29])&0x3f)<<8 | uint32(b[28])
 	case 'L':
-		info.Width = (uint32(b[20])<<16 | uint32(b[21])<<8 | uint32(b[22])) - 1
-		info.Height = (uint32(b[24])<<16 | uint32(b[25])<<8 | uint32(b[26])) - 1
+		info.Width = (uint32(b[20]) | uint32(b[21])<<8 | uint32(b[22])<<16) + 1
+		info.Height = (uint32(b[24]) | uint32(b[25])<<8 | uint32(b[26])<<16) + 1
 	}
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = WEBP
@@ -254,30 +234,27 @@ func gif(b []byte, info *Info) {
 }
 
 func bmp(b []byte, info *Info) {
-	stream := bs{b: b}
-	stream.skip(18)
-	info.Width = stream.uint32()
-	info.Height = stream.uint32()
+	if len(b) < 26 {
+		return
+	}
+	_ = b[25]
+
+	info.Width = uint32(b[21])<<24 |
+		uint32(b[20])<<16 |
+		uint32(b[19])<<8 |
+		uint32(b[18])
+	info.Height = uint32(b[25])<<24 |
+		uint32(b[24])<<16 |
+		uint32(b[23])<<8 |
+		uint32(b[22])
+
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = BMP
 	}
 }
 
 func ppm(b []byte, info *Info) {
-	stream := bs{b: b}
-	for {
-		line := stream.readline()
-		if len(line) == 0 {
-			return
-		}
-		if line[0] != '#' {
-			break
-		}
-	}
-	if stream.readbyte() != 'P' {
-		return
-	}
-	switch stream.readbyte() {
+	switch b[1] {
 	case '1':
 		info.Type = PBM
 	case '2', '5':
@@ -289,10 +266,10 @@ func ppm(b []byte, info *Info) {
 	case '7':
 		info.Type = XV
 	}
-	stream.skipspace()
-	info.Width = stream.readint()
-	stream.skipspace()
-	info.Height = stream.readint()
+	i := skipSpace(b, 2)
+	info.Width, i = parseUint32(b, i)
+	i = skipSpace(b, i)
+	info.Height, _ = parseUint32(b, i)
 	if info.Width == 0 || info.Height == 0 {
 		info.Type = Unknown
 	}
@@ -305,8 +282,8 @@ func xbm(b []byte, info *Info) {
 	if m == nil {
 		return
 	}
-	info.Width = parseUint32(m[0][1])
-	info.Height = parseUint32(m[1][1])
+	info.Width, _ = parseUint32(m[0][1], 0)
+	info.Height, _ = parseUint32(m[0][2], 0)
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = XBM
 	}
@@ -315,18 +292,10 @@ func xbm(b []byte, info *Info) {
 var xpmRegex = regexp.MustCompile(`\s*(\d+)\s+(\d+)(\s+\d+\s+\d+){1,2}\s*`)
 
 func xpm(b []byte, info *Info) {
-	stream := bs{b: b}
-	for {
-		line := stream.readline()
-		if len(line) == 0 {
-			break
-		}
-		m := xbmRegex.FindAllSubmatch(line, -1)
-		if m != nil {
-			info.Width = parseUint32(m[0][1])
-			info.Height = parseUint32(m[1][1])
-			break
-		}
+	m := xpmRegex.FindAllSubmatch(b, -1)
+	if m != nil {
+		info.Width, _ = parseUint32(m[0][1], 0)
+		info.Height, _ = parseUint32(m[0][2], 0)
 	}
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = XPM
@@ -334,16 +303,20 @@ func xpm(b []byte, info *Info) {
 }
 
 func tiffbe(b []byte, info *Info) {
-	stream := bs{b: b}
-	offset := int(stream.uint32())
-	stream.skip(offset)
-	dirent := offset + (int(stream.uint16()) * 12)
+	var i int = 4
+
+	offset := int(uint32(b[i])<<24 |
+		uint32(b[i+1])<<16 |
+		uint32(b[i+2])<<8 |
+		uint32(b[i+3]))
+
+	i += 4 + offset
+	// dirent := offset + (int(b[i])<<8|int(b[i+1]))*12
+	i += 2
 
 	for info.Width == 0 && info.Height == 0 {
-		ifd := stream.read(12)
-		if len(ifd) != 0 || stream.tell() > dirent {
-			break
-		}
+		ifd := b[i : i+12]
+		i += 12
 		tag := uint16(ifd[0])<<8 | uint16(ifd[1])
 		typ := uint16(ifd[2])<<8 | uint16(ifd[3])
 		switch typ {
@@ -410,73 +383,23 @@ func tiffle(b []byte, info *Info) {
 }
 
 func psd(b []byte, info *Info) {
-	stream := bs{b: b}
-	stream.skip(14)
-	info.Height = stream.uint32()
-	info.Width = stream.uint32()
+	if len(b) < 22 {
+		return
+	}
+	_ = b[21]
+
+	info.Width = uint32(b[18])<<24 |
+		uint32(b[19])<<16 |
+		uint32(b[20])<<8 |
+		uint32(b[21])
+	info.Height = uint32(b[14])<<24 |
+		uint32(b[15])<<16 |
+		uint32(b[16])<<8 |
+		uint32(b[17])
+
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = PSD
 	}
-}
-
-func pcd(b []byte, info *Info) {
-	if len(b) < 0xf00 {
-		return
-	}
-	_ = b[0xf00]
-
-	if !(b[0x800] == 'P' && b[0x801] == 'C' && b[0x802] == 'D') {
-		return
-	}
-
-	switch b[0x0e02] & 1 {
-	case 1:
-		info.Type = PCD
-		info.Width = 768
-		info.Height = 512
-	default:
-		info.Type = PCD
-		info.Width = 512
-		info.Height = 768
-	}
-}
-
-func swf(b []byte, info *Info) {
-	if len(b) < 34 {
-		return
-	}
-	_ = b[34]
-
-	var bs []byte
-	for i := 17; i < 25; i++ {
-		bs = append(bs, strconv.FormatUint(uint64(b[i]), 2)...)
-	}
-	bits := b[8] & 0xf8 >> 3
-
-	if x, _ := strconv.ParseUint(b2s(bs[5+bits:5+2*bits]), 2, 64); x > 0 {
-		info.Width = uint32(x / 20)
-	}
-	if y, _ := strconv.ParseUint(b2s(bs[5+3*bits:5+4*bits]), 2, 64); y > 0 {
-		info.Height = uint32(y / 20)
-	}
-
-	if info.Width != 0 && info.Height != 0 {
-		info.Type = SWF
-	}
-}
-
-func swfmx(b []byte, info *Info) {
-	r, err := zlib.NewReader(bytes.NewReader(b))
-	if err != nil {
-		return
-	}
-
-	var p [1024]byte
-	if _, err = r.Read(p[:]); err != nil {
-		return
-	}
-
-	swf(p[:], info)
 }
 
 func mng(b []byte, info *Info) {
@@ -503,155 +426,74 @@ func mng(b []byte, info *Info) {
 }
 
 func rgb(b []byte, info *Info) {
-	stream := bs{b: b}
-	stream.skip(6)
-	info.Width = uint32(stream.uint16())
-	info.Height = uint32(stream.uint16())
+	if len(b) < 10 {
+		return
+	}
+	_ = b[9]
+
+	info.Width = uint32(b[6])<<8 |
+		uint32(b[7])
+	info.Height = uint32(b[8])<<8 |
+		uint32(b[9])
+
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = RGB
 	}
 }
 
 func ras(b []byte, info *Info) {
-	stream := bs{b: b}
-	stream.skip(4)
-	info.Width = stream.uint32()
-	info.Height = stream.uint32()
+	if len(b) < 12 {
+		return
+	}
+	_ = b[11]
+
+	info.Width = uint32(b[4])<<24 |
+		uint32(b[5])<<16 |
+		uint32(b[6])<<8 |
+		uint32(b[7])
+	info.Height = uint32(b[8])<<24 |
+		uint32(b[9])<<16 |
+		uint32(b[10])<<8 |
+		uint32(b[11])
+
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = RAS
 	}
 }
 
 func pcx(b []byte, info *Info) {
-	stream := bs{b: b}
-	stream.skip(4)
-	p := stream.read(8)
-	if len(p) < 8 {
+	if len(b) < 12 {
 		return
 	}
-	info.Height = (uint32(p[7])<<8 | uint32(p[6])) - (uint32(p[3])<<8 | uint32(p[2]))
-	info.Width = (uint32(p[5])<<8 | uint32(p[4])) - (uint32(p[1])<<8 | uint32(p[0]))
+	_ = b[11]
+
+	info.Width = 1 +
+		(uint32(b[9])<<8 | uint32(b[8])) -
+		(uint32(b[5])<<8 | uint32(b[4]))
+	info.Height = 1 +
+		(uint32(b[11])<<8 | uint32(b[10])) -
+		(uint32(b[7])<<8 | uint32(b[6]))
+
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = PCX
 	}
 }
 
-var (
-	svgRegexWidth  = regexp.MustCompile(`width\s*=\s*(["\'])(\d*\.?\d+)(?:px)?`)
-	svgRegexHeight = regexp.MustCompile(`height\s*=\s*(["\'])(\d*\.?\d+)(?:px)?`)
-)
-
-func svg(b []byte, info *Info) {
-	m := svgRegexWidth.FindAllSubmatch(b, -1)
-	n := svgRegexWidth.FindAllSubmatch(b, -1)
-	if m != nil && n != nil {
-		info.Width = parseUint32(m[2][1])
-		info.Height = parseUint32(n[2][1])
-	}
-	if info.Width != 0 && info.Height != 0 {
-		info.Type = SVG
-	}
-}
-
-type bs struct {
-	b []byte
-	i int
-}
-
-func (s *bs) skip(n int) {
-	s.i += n
-}
-
-func (s *bs) tell() int {
-	return s.i
-}
-
-func (s *bs) skipspace() {
-	j := s.i
-	for s.b[j] == ' ' || s.b[j] == '\t' || s.b[j] == '\r' || s.b[j] == '\n' {
+func skipSpace(b []byte, i int) (j int) {
+	j = i
+	for b[j] == ' ' || b[j] == '\t' || b[j] == '\r' || b[j] == '\n' {
 		j++
 	}
-	s.i = j
-}
-
-func (s *bs) peek(n int) (b []byte) {
-	pos := s.i + n
-	if end := len(s.b) - 1; pos > end {
-		pos = end
-	}
-	b = s.b[s.i:pos]
 	return
 }
 
-func (s *bs) readbyte() (c byte) {
-	c = s.b[s.i]
-	s.i++
-	return
-}
-
-func (s *bs) readline() (line []byte) {
-	j := s.i
-	for s.b[j] != '\n' {
-		j++
-	}
-	line = s.b[s.i:j]
-	s.i = j + 1
-	return
-}
-
-func (s *bs) readint() (i uint32) {
-	for {
-		switch s.b[s.i] {
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			i = i*10 + uint32(s.b[s.i]-'0')
-		default:
-			return
-		}
-		s.i++
-	}
-	return
-}
-
-func (s *bs) read(n int) (b []byte) {
-	pos := s.i + n
-	if end := len(s.b) - 1; pos > end {
-		pos = end
-	}
-	b = s.b[s.i:pos]
-	s.i += n
-	return
-}
-
-func (s *bs) uint8() (n uint8) {
-	n = s.b[s.i]
-	s.i++
-	return
-}
-
-func (s *bs) uint16() (n uint16) {
-	n = uint16(s.b[s.i+1]) | uint16(s.b[s.i])<<8
-	s.i += 2
-	return
-}
-
-func (s *bs) uint32() (n uint32) {
-	n = uint32(s.b[s.i+3]) |
-		uint32(s.b[s.i+2])<<8 |
-		uint32(s.b[s.i+1])<<16 |
-		uint32(s.b[s.i])<<24
-	s.i += 4
-	return
-}
-
-func parseUint32(b []byte) (n uint32) {
-	for i := 0; i < len(b); i++ {
-		j := uint32(b[i] - '0')
-		if j < 0 || j > 9 {
+func parseUint32(b []byte, i int) (n uint32, j int) {
+	for j = i; j < len(b); j++ {
+		x := uint32(b[j] - '0')
+		if x < 0 || x > 9 {
 			break
 		}
-		n = n*10 + j
+		n = n*10 + x
 	}
 	return
 }
-
-func b2s(b []byte) string { return *(*string)(unsafe.Pointer(&b)) }
