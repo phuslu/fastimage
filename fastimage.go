@@ -1,6 +1,7 @@
 package fastimage
 
 import (
+	"encoding/binary"
 	"regexp"
 )
 
@@ -21,7 +22,6 @@ const (
 	PSD
 	RAS
 	RGB
-	SVG
 	TIFF
 	WEBP
 	XBM
@@ -108,11 +108,11 @@ func GetInfo(p []byte) (info Info) {
 		}
 	case 'M':
 		if p[1] == 'M' && p[2] == '\x00' && p[3] == '\x2a' {
-			tiffbe(p, &info)
+			tiff(p, &info, binary.BigEndian)
 		}
 	case 'I':
 		if p[1] == 'I' && p[2] == '\x2a' && p[3] == '\x00' {
-			tiffle(p, &info)
+			tiff(p, &info, binary.LittleEndian)
 		}
 	case '8':
 		if p[1] == 'B' && p[2] == 'P' && p[3] == 'S' {
@@ -181,13 +181,13 @@ func webp(b []byte, info *Info) {
 	}
 
 	switch b[15] {
-	case ' ':
+	case ' ': // VP8
 		info.Width = (uint32(b[27])&0x3f)<<8 | uint32(b[26])
 		info.Height = (uint32(b[29])&0x3f)<<8 | uint32(b[28])
-	case 'X':
-		info.Width = (uint32(b[27])&0x3f)<<8 | uint32(b[26])
-		info.Height = (uint32(b[29])&0x3f)<<8 | uint32(b[28])
-	case 'L':
+	case 'L': // VP8L
+		info.Width = (uint32(b[20]) | uint32(b[21])<<8 | uint32(b[22])<<16) + 1
+		info.Height = (uint32(b[24]) | uint32(b[25])<<8 | uint32(b[26])<<16) + 1
+	case 'X': // VP8X
 		info.Width = (uint32(b[20]) | uint32(b[21])<<8 | uint32(b[22])<<16) + 1
 		info.Height = (uint32(b[24]) | uint32(b[25])<<8 | uint32(b[26])<<16) + 1
 	}
@@ -302,84 +302,39 @@ func xpm(b []byte, info *Info) {
 	}
 }
 
-func tiffbe(b []byte, info *Info) {
-	var i int = 4
-
-	offset := int(uint32(b[i])<<24 |
-		uint32(b[i+1])<<16 |
-		uint32(b[i+2])<<8 |
-		uint32(b[i+3]))
-
-	i += 4 + offset
-	// dirent := offset + (int(b[i])<<8|int(b[i+1]))*12
+func tiff(b []byte, info *Info, order binary.ByteOrder) {
+	i := int(order.Uint32(b[4:8]))
+	n := int(order.Uint16(b[i+2 : i+4]))
 	i += 2
 
-	for info.Width == 0 && info.Height == 0 {
-		ifd := b[i : i+12]
-		i += 12
-		tag := uint16(ifd[0])<<8 | uint16(ifd[1])
-		typ := uint16(ifd[2])<<8 | uint16(ifd[3])
-		switch typ {
-		case 1:
-			switch tag {
-			case 0x0100:
-				info.Width = uint32(ifd[8])
-			case 0x0101:
-				info.Height = uint32(ifd[8])
-			}
-		case 3:
-			switch tag {
-			case 0x0100:
-				info.Width = uint32(ifd[8])<<8 | uint32(ifd[9])
-			case 0x0101:
-				info.Height = uint32(ifd[8])<<8 | uint32(ifd[9])
-			}
-		case 4:
-			switch tag {
-			case 0x0100:
-				info.Width = uint32(ifd[8])<<24 |
-					uint32(ifd[9])<<16 |
-					uint32(ifd[10])<<8 |
-					uint32(ifd[11])
-			case 0x0101:
-				info.Height = uint32(ifd[8])<<24 |
-					uint32(ifd[9])<<16 |
-					uint32(ifd[10])<<8 |
-					uint32(ifd[11])
-			}
-		case 6:
-			switch tag {
-			case 0x0100:
-				info.Width = uint32(ifd[8] & 0x7f)
-			case 0x0101:
-				info.Height = uint32(ifd[8] & 0x7f)
-			}
-		case 8:
-			switch tag {
-			case 0x0100:
-				info.Width = uint32(ifd[8]&0x7f)<<8 | uint32(ifd[9])
-			case 0x0101:
-				info.Height = uint32(ifd[8]&0x7f)<<8 | uint32(ifd[9])
-			}
-		case 9:
-			switch tag {
-			case 0x0100:
-				info.Width = uint32(ifd[8]&0x7f)<<24 |
-					uint32(ifd[9])<<16 |
-					uint32(ifd[10])<<8 |
-					uint32(ifd[11])
-			case 0x0101:
-				info.Height = uint32(ifd[8]&0x7f)<<24 |
-					uint32(ifd[9])<<16 |
-					uint32(ifd[10])<<8 |
-					uint32(ifd[11])
-			}
+	for ; i < n*12; i += 12 {
+		tag := order.Uint16(b[i : i+2])
+		datatype := order.Uint16(b[i+2 : i+4])
+
+		var value uint32
+		switch datatype {
+		case 1, 6:
+			value = uint32(b[i+9])
+		case 3, 8:
+			value = uint32(order.Uint16(b[i+8 : i+10]))
+		case 4, 9:
+			value = order.Uint32(b[i+8 : i+12])
+		default:
+			return
+		}
+
+		switch tag {
+		case 256:
+			info.Width = value
+		case 257:
+			info.Height = value
+		}
+
+		if info.Width > 0 && info.Height > 0 {
+			info.Type = TIFF
+			return
 		}
 	}
-}
-
-func tiffle(b []byte, info *Info) {
-
 }
 
 func psd(b []byte, info *Info) {
