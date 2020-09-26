@@ -30,7 +30,7 @@ func main() {
 	fmt.Printf("%+v\n", fastimage.GetInfo(data))
 }
 
-// Output: {Type:15 Width:400 Height:301}
+// Output: {Type:webp Width:400 Height:301}
 ```
 
 [godoc-img]: http://img.shields.io/badge/godoc-reference-blue.svg

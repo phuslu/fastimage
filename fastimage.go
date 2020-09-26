@@ -29,6 +29,48 @@ const (
 	XV
 )
 
+func (t Type) String() string {
+	switch t {
+	case BMP:
+		return "bmp"
+	case BPM:
+		return "bpm"
+	case GIF:
+		return "gif"
+	case JPEG:
+		return "jpeg"
+	case MNG:
+		return "mng"
+	case PBM:
+		return "pbm"
+	case PCX:
+		return "pcx"
+	case PGM:
+		return "pgm"
+	case PNG:
+		return "png"
+	case PPM:
+		return "ppm"
+	case PSD:
+		return "psd"
+	case RAS:
+		return "ras"
+	case RGB:
+		return "rgb"
+	case TIFF:
+		return "tiff"
+	case WEBP:
+		return "webp"
+	case XBM:
+		return "xbm"
+	case XPM:
+		return "xpm"
+	case XV:
+		return "xv"
+	}
+	return ""
+}
+
 type Info struct {
 	Type   Type
 	Width  uint32
