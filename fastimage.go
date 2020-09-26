@@ -185,11 +185,11 @@ func webp(b []byte, info *Info) {
 		info.Width = (uint32(b[27])&0x3f)<<8 | uint32(b[26])
 		info.Height = (uint32(b[29])&0x3f)<<8 | uint32(b[28])
 	case 'L': // VP8L
-		info.Width = (uint32(b[20]) | uint32(b[21])<<8 | uint32(b[22])<<16) + 1
-		info.Height = (uint32(b[24]) | uint32(b[25])<<8 | uint32(b[26])<<16) + 1
+		info.Width = (uint32(b[22])<<8|uint32(b[21]))&16383 + 1
+		info.Height = (uint32(b[23])<<2|uint32(b[22]>>6))&16383 + 1
 	case 'X': // VP8X
-		info.Width = (uint32(b[20]) | uint32(b[21])<<8 | uint32(b[22])<<16) + 1
-		info.Height = (uint32(b[24]) | uint32(b[25])<<8 | uint32(b[26])<<16) + 1
+		info.Width = (uint32(b[24]) | uint32(b[25])<<8 | uint32(b[26])<<16) + 1
+		info.Height = (uint32(b[27]) | uint32(b[28])<<8 | uint32(b[29])<<16) + 1
 	}
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = WEBP
