@@ -499,16 +499,32 @@ func ppm(b []byte, info *Info) {
 	}
 }
 
-var xbmRegex = regexp.MustCompile(`^\#define\s*\S*\s*(\d+)\s*\n\#define\s*\S*\s*(\d+)`)
-
 func xbm(b []byte, info *Info) {
-	m := xbmRegex.FindAllSubmatch(b, -1)
-	if m == nil {
+	var p []byte
+	var i int
+
+	_, i = readNonSpace(b, i)
+	i = skipSpace(b, i)
+	_, i = readNonSpace(b, i)
+	i = skipSpace(b, i)
+	info.Width, i = parseUint32(b, i)
+
+	i = skipSpace(b, i)
+	p, i = readNonSpace(b, i)
+	if !(len(p) == 7 &&
+		p[6] == 'e' &&
+		p[0] == '#' &&
+		p[1] == 'd' &&
+		p[2] == 'e' &&
+		p[3] == 'f' &&
+		p[4] == 'i' &&
+		p[5] == 'n') {
 		return
 	}
-
-	info.Width, _ = parseUint32(m[0][1], 0)
-	info.Height, _ = parseUint32(m[0][2], 0)
+	i = skipSpace(b, i)
+	_, i = readNonSpace(b, i)
+	i = skipSpace(b, i)
+	info.Height, i = parseUint32(b, i)
 
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = XBM
@@ -668,6 +684,15 @@ func skipSpace(b []byte, i int) (j int) {
 	for b[j] == ' ' || b[j] == '\t' || b[j] == '\r' || b[j] == '\n' {
 		j++
 	}
+	return
+}
+
+func readNonSpace(b []byte, i int) (b1 []byte, j int) {
+	j = i
+	for b[j] != ' ' && b[j] != '\t' && b[j] != '\r' && b[j] != '\n' {
+		j++
+	}
+	b1 = b[i:j]
 	return
 }
 
