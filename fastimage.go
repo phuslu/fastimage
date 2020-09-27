@@ -680,23 +680,39 @@ func pcx(b []byte, info *Info) {
 }
 
 func skipSpace(b []byte, i int) (j int) {
-	j = i
-	for b[j] == ' ' || b[j] == '\t' || b[j] == '\r' || b[j] == '\n' {
-		j++
+	_ = b[len(b)-1]
+	for j = i; j < len(b); j++ {
+		if b[j] != ' ' && b[j] != '\t' && b[j] != '\r' && b[j] != '\n' {
+			break
+		}
 	}
 	return
 }
 
-func readNonSpace(b []byte, i int) (b1 []byte, j int) {
-	j = i
-	for b[j] != ' ' && b[j] != '\t' && b[j] != '\r' && b[j] != '\n' {
-		j++
+func readNonSpace(b []byte, i int) (p []byte, j int) {
+	_ = b[len(b)-1]
+	for j = i; j < len(b); j++ {
+		if b[j] == ' ' || b[j] == '\t' || b[j] == '\r' || b[j] == '\n' {
+			break
+		}
 	}
-	b1 = b[i:j]
+	p = b[i:j]
+	return
+}
+
+func readLine(b []byte, i int) (p []byte, j int) {
+	_ = b[len(b)-1]
+	for j = i; j < len(b); j++ {
+		if b[j] == '\n' {
+			break
+		}
+	}
+	p = b[i:j]
 	return
 }
 
 func parseUint32(b []byte, i int) (n uint32, j int) {
+	_ = b[len(b)-1]
 	for j = i; j < len(b); j++ {
 		x := uint32(b[j] - '0')
 		if x < 0 || x > 9 {
