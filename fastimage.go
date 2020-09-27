@@ -2,7 +2,6 @@ package fastimage
 
 import (
 	"encoding/binary"
-	"regexp"
 )
 
 // Type represents the type of the image detected, or `Unknown`.
@@ -531,14 +530,23 @@ func xbm(b []byte, info *Info) {
 	}
 }
 
-var xpmRegex = regexp.MustCompile(`\s*(\d+)\s+(\d+)(\s+\d+\s+\d+){1,2}\s*`)
-
 func xpm(b []byte, info *Info) {
-	m := xpmRegex.FindAllSubmatch(b, -1)
+	var line []byte
+	var i, j int
 
-	if m != nil {
-		info.Width, _ = parseUint32(m[0][1], 0)
-		info.Height, _ = parseUint32(m[0][2], 0)
+	for {
+		line, i = readLine(b, i)
+		if len(line) == 0 {
+			break
+		}
+		j = skipSpace(line, 0)
+		if line[j] != '"' {
+			continue
+		}
+		info.Width, j = parseUint32(line, j+1)
+		j = skipSpace(line, j)
+		info.Height, j = parseUint32(line, j)
+		break
 	}
 
 	if info.Width != 0 && info.Height != 0 {
@@ -707,6 +715,7 @@ func readLine(b []byte, i int) (p []byte, j int) {
 			break
 		}
 	}
+	j++
 	p = b[i:j]
 	return
 }
