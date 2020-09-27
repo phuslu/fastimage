@@ -1,9 +1,5 @@
 package fastimage
 
-import (
-	"encoding/binary"
-)
-
 // Type represents the type of the image detected, or `Unknown`.
 type Type uint64
 
@@ -328,11 +324,11 @@ func GetInfo(p []byte) (info Info) {
 		}
 	case 'M':
 		if p[1] == 'M' && p[2] == '\x00' && p[3] == '\x2a' {
-			tiff(p, &info, binary.BigEndian)
+			tiff(p, &info, bigEndian)
 		}
 	case 'I':
 		if p[1] == 'I' && p[2] == '\x2a' && p[3] == '\x00' {
-			tiff(p, &info, binary.LittleEndian)
+			tiff(p, &info, littleEndian)
 		}
 	case '8':
 		if p[1] == 'B' && p[2] == 'P' && p[3] == 'S' {
@@ -554,7 +550,7 @@ func xpm(b []byte, info *Info) {
 	}
 }
 
-func tiff(b []byte, info *Info, order binary.ByteOrder) {
+func tiff(b []byte, info *Info, order byteOrder) {
 	i := int(order.Uint32(b[4:8]))
 	n := int(order.Uint16(b[i+2 : i+4]))
 	i += 2
@@ -730,4 +726,37 @@ func parseUint32(b []byte, i int) (n uint32, j int) {
 		n = n*10 + x
 	}
 	return
+}
+
+type byteOrder interface {
+	Uint16([]byte) uint16
+	Uint32([]byte) uint32
+}
+
+var littleEndian littleOrder
+
+type littleOrder struct{}
+
+func (littleOrder) Uint16(b []byte) uint16 {
+	_ = b[1]
+	return uint16(b[0]) | uint16(b[1])<<8
+}
+
+func (littleOrder) Uint32(b []byte) uint32 {
+	_ = b[3]
+	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
+}
+
+var bigEndian bigOrder
+
+type bigOrder struct{}
+
+func (bigOrder) Uint16(b []byte) uint16 {
+	_ = b[1]
+	return uint16(b[1]) | uint16(b[0])<<8
+}
+
+func (bigOrder) Uint32(b []byte) uint32 {
+	_ = b[3]
+	return uint32(b[3]) | uint32(b[2])<<8 | uint32(b[1])<<16 | uint32(b[0])<<24
 }
