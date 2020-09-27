@@ -37,6 +37,37 @@ func TestTypeString(t *testing.T) {
 	}
 }
 
+func TestTypeMime(t *testing.T) {
+	cases := []struct {
+		Type Type
+	}{
+		{BMP},
+		{BPM},
+		{GIF},
+		{JPEG},
+		{MNG},
+		{PBM},
+		{PCX},
+		{PGM},
+		{PNG},
+		{PPM},
+		{PSD},
+		{RAS},
+		{RGB},
+		{TIFF},
+		{WEBP},
+		{XBM},
+		{XPM},
+		{XV},
+	}
+
+	for _, c := range cases {
+		if got := c.Type.Mime(); got == "" {
+			t.Errorf("get type mime empty, type: %+v, string: %+v", c.Type, c.Type.String())
+		}
+	}
+}
+
 func TestGetInfo(t *testing.T) {
 	cases := []struct {
 		File string

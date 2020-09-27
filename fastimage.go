@@ -92,6 +92,49 @@ func (t Type) String() string {
 	return ""
 }
 
+// Mime return mime type of image type
+func (t Type) Mime() string {
+	switch t {
+	case BMP:
+		return "image/bmp"
+	case BPM:
+		return "image/x-portable-pixmap"
+	case GIF:
+		return "image/gif"
+	case JPEG:
+		return "image/jpeg"
+	case MNG:
+		return "video/x-mng"
+	case PBM:
+		return "image/x-portable-bitmap"
+	case PCX:
+		return "image/x-pcx"
+	case PGM:
+		return "image/x-portable-graymap"
+	case PNG:
+		return "image/png"
+	case PPM:
+		return "image/x-portable-pixmap"
+	case PSD:
+		return "image/vnd.adobe.photoshop"
+	case RAS:
+		return "image/x-cmu-raster"
+	case RGB:
+		return "image/x-rgb"
+	case TIFF:
+		return "image/tiff"
+	case WEBP:
+		return "image/webp"
+	case XBM:
+		return "image/x-xbitmap"
+	case XPM:
+		return "image/x-xpixmap"
+	case XV:
+		return "image/x-portable-pixmap"
+	}
+	return ""
+}
+
 // Info holds the type and dismissons of an image
 type Info struct {
 	Type   Type
