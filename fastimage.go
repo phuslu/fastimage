@@ -259,17 +259,17 @@ func GetInfo(p []byte) (info Info) {
 func jpeg(b []byte, info *Info) {
 	i := 2
 	for {
-		marker := b[i]
+		length := int(b[i+3]) | int(b[i+2])<<8
 		code := b[i+1]
-		length := uint16(b[i+2])<<8 | uint16(b[i+3])
+		marker := b[i]
 		i += 4
 		switch {
 		case marker != 0xff:
 			return
 		case code >= 0xc0 && code <= 0xc3:
 			info.Type = JPEG
-			info.Width = uint32(b[i+3])<<8 | uint32(b[i+4])
-			info.Height = uint32(b[i+1])<<8 | uint32(b[i+2])
+			info.Width = uint32(b[i+4]) | uint32(b[i+3])<<8
+			info.Height = uint32(b[i+2]) | uint32(b[i+1])<<8
 			return
 		default:
 			i += int(length) - 2
@@ -298,6 +298,7 @@ func webp(b []byte, info *Info) {
 		info.Width = (uint32(b[24]) | uint32(b[25])<<8 | uint32(b[26])<<16) + 1
 		info.Height = (uint32(b[27]) | uint32(b[28])<<8 | uint32(b[29])<<16) + 1
 	}
+
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = WEBP
 	}
@@ -373,10 +374,12 @@ func ppm(b []byte, info *Info) {
 	case '7':
 		info.Type = XV
 	}
+
 	i := skipSpace(b, 2)
 	info.Width, i = parseUint32(b, i)
 	i = skipSpace(b, i)
 	info.Height, _ = parseUint32(b, i)
+
 	if info.Width == 0 || info.Height == 0 {
 		info.Type = Unknown
 	}
@@ -389,8 +392,10 @@ func xbm(b []byte, info *Info) {
 	if m == nil {
 		return
 	}
+
 	info.Width, _ = parseUint32(m[0][1], 0)
 	info.Height, _ = parseUint32(m[0][2], 0)
+
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = XBM
 	}
@@ -400,10 +405,12 @@ var xpmRegex = regexp.MustCompile(`\s*(\d+)\s+(\d+)(\s+\d+\s+\d+){1,2}\s*`)
 
 func xpm(b []byte, info *Info) {
 	m := xpmRegex.FindAllSubmatch(b, -1)
+
 	if m != nil {
 		info.Width, _ = parseUint32(m[0][1], 0)
 		info.Height, _ = parseUint32(m[0][2], 0)
 	}
+
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = XPM
 	}
@@ -482,6 +489,7 @@ func mng(b []byte, info *Info) {
 		uint32(b[21])<<16 |
 		uint32(b[22])<<8 |
 		uint32(b[23])
+
 	if info.Width != 0 && info.Height != 0 {
 		info.Type = MNG
 	}
