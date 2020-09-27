@@ -5,6 +5,38 @@ import (
 	"testing"
 )
 
+func TestTypeString(t *testing.T) {
+	cases := []struct {
+		Type   Type
+		String string
+	}{
+		{BMP, "bmp"},
+		{BPM, "bpm"},
+		{GIF, "gif"},
+		{JPEG, "jpeg"},
+		{MNG, "mng"},
+		{PBM, "pbm"},
+		{PCX, "pcx"},
+		{PGM, "pgm"},
+		{PNG, "png"},
+		{PPM, "ppm"},
+		{PSD, "psd"},
+		{RAS, "ras"},
+		{RGB, "rgb"},
+		{TIFF, "tiff"},
+		{WEBP, "webp"},
+		{XBM, "xbm"},
+		{XPM, "xpm"},
+		{XV, "xv"},
+	}
+
+	for _, c := range cases {
+		if got := c.Type.String(); got != c.String {
+			t.Errorf("get type string error, type=%+v want=%+v, got=%+v", c.Type, c.Type.String(), got)
+		}
+	}
+}
+
 func TestGetInfo(t *testing.T) {
 	cases := []struct {
 		File string
