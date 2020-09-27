@@ -26,6 +26,13 @@ func main() {
 // Output: {Type:webp Width:400 Height:301}
 ```
 
+### Command Tool
+```bash
+$ go get github.com/phuslu/fastimage/cmd/fastimage
+$ fastimage banner.png
+png image/png 320 50
+```
+
 [godoc-img]: http://img.shields.io/badge/godoc-reference-blue.svg
 [godoc]: https://godoc.org/github.com/phuslu/fastimage
 [release-img]: https://img.shields.io/github/v/tag/phuslu/fastimage?label=release
