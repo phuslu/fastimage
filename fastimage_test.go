@@ -31,8 +31,8 @@ func TestTypeString(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		if got := c.Type.String(); got != c.String {
-			t.Errorf("get type string error, type=%+v want=%+v, got=%+v", c.Type, c.Type.String(), got)
+		if got, want := c.Type.String(), c.String; got != want {
+			t.Errorf("get type string error, type=%+v, got=%+v, want=%+v,", c.Type, got, want)
 		}
 	}
 }
@@ -64,6 +64,44 @@ func TestTypeMime(t *testing.T) {
 	for _, c := range cases {
 		if got := c.Type.Mime(); got == "" {
 			t.Errorf("get type mime empty, type: %+v, string: %+v", c.Type, c.Type.String())
+		}
+	}
+}
+
+func TestGetType(t *testing.T) {
+	cases := []struct {
+		File string
+		Type Type
+	}{
+		{"testdata/letter_T.jpg", JPEG},
+		{"testdata/4.sm.webp", WEBP},
+		{"testdata/2_webp_a.webp", WEBP},
+		{"testdata/2_webp_ll.webp", WEBP},
+		{"testdata/4_webp_ll.webp", WEBP},
+		{"testdata/pass-1_s.png", PNG},
+		{"testdata/pak38.gif", GIF},
+		{"testdata/xterm.bmp", BMP},
+		{"testdata/letter_N.ppm", PPM},
+		{"testdata/spacer50.xbm", XBM},
+		{"testdata/xterm.xpm", XPM},
+		{"testdata/bexjdic.tif", TIFF},
+		{"testdata/lexjdic.tif", TIFF},
+		{"testdata/letter_T.psd", PSD},
+		{"testdata/letter_T.psd", PSD},
+		{"testdata/468x60.psd", PSD},
+		{"testdata/letter_T.mng", MNG},
+		{"testdata/letter_T.ras", RAS},
+		{"testdata/letter_T.pcx", PCX},
+	}
+
+	for _, c := range cases {
+		data, err := ioutil.ReadFile(c.File)
+		if err != nil {
+			t.Errorf("read file(%+v) error: %+v", c.File, err)
+		}
+
+		if got, want := GetType(data), c.Type; got != want {
+			t.Errorf("get info error, file=%+v, got=%+v, want=%+v,", c.File, got, want)
 		}
 	}
 }
@@ -100,8 +138,8 @@ func TestGetInfo(t *testing.T) {
 			t.Errorf("read file(%+v) error: %+v", c.File, err)
 		}
 
-		if got := GetInfo(data); got != c.Info {
-			t.Errorf("get info error, file=%+v want=%+v, got=%+v", c.File, c.Info, got)
+		if got, want := GetInfo(data), c.Info; got != want {
+			t.Errorf("get info error, file=%+v, got=%+v, want=%+v,", c.File, got, want)
 		}
 	}
 }

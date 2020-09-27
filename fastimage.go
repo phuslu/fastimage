@@ -135,6 +135,120 @@ func (t Type) Mime() string {
 	return ""
 }
 
+// GetType detects a image info of data.
+func GetType(p []byte) Type {
+	const minOffset = 80 // 1 pixel gif
+	if len(p) < minOffset {
+		return Unknown
+	}
+	_ = p[minOffset-1]
+
+	switch p[0] {
+	case '\xff':
+		if p[1] == '\xd8' {
+			return JPEG
+		}
+	case '\x89':
+		if p[1] == 'P' &&
+			p[2] == 'N' &&
+			p[3] == 'G' &&
+			p[4] == '\x0d' &&
+			p[5] == '\x0a' &&
+			p[6] == '\x1a' &&
+			p[7] == '\x0a' {
+			return PNG
+		}
+	case 'R':
+		if p[1] == 'I' &&
+			p[2] == 'F' &&
+			p[3] == 'F' &&
+			p[8] == 'W' &&
+			p[9] == 'E' &&
+			p[10] == 'B' &&
+			p[11] == 'P' {
+			return WEBP
+		}
+	case 'G':
+		if p[1] == 'I' &&
+			p[2] == 'F' &&
+			p[3] == '8' &&
+			(p[4] == '7' || p[4] == ',' || p[4] == '9') &&
+			p[5] == 'a' {
+			return GIF
+		}
+	case 'B':
+		if p[1] == 'M' {
+			return BMP
+		}
+	case 'P':
+		switch p[1] {
+		case '1', '2', '3', '4', '5', '6', '7':
+			return PPM
+		}
+	case '#':
+		if p[1] == 'd' &&
+			p[2] == 'e' &&
+			p[3] == 'f' &&
+			p[4] == 'i' &&
+			p[5] == 'n' &&
+			p[6] == 'e' &&
+			(p[7] == ' ' || p[7] == '\t') {
+			return XBM
+		}
+	case '/':
+		if p[1] == '*' &&
+			p[2] == ' ' &&
+			p[3] == 'X' &&
+			p[4] == 'P' &&
+			p[5] == 'M' &&
+			p[6] == ' ' &&
+			p[7] == '*' &&
+			p[8] == '/' {
+			return XPM
+		}
+	case 'M':
+		if p[1] == 'M' && p[2] == '\x00' && p[3] == '\x2a' {
+			return TIFF
+		}
+	case 'I':
+		if p[1] == 'I' && p[2] == '\x2a' && p[3] == '\x00' {
+			return TIFF
+		}
+	case '8':
+		if p[1] == 'B' && p[2] == 'P' && p[3] == 'S' {
+			return PSD
+		}
+	case '\x8a':
+		if p[1] == 'M' &&
+			p[2] == 'N' &&
+			p[3] == 'G' &&
+			p[4] == '\x0d' &&
+			p[5] == '\x0a' &&
+			p[6] == '\x1a' &&
+			p[7] == '\x0a' {
+			return MNG
+		}
+	case '\x01':
+		if p[1] == '\xda' &&
+			p[2] == '[' &&
+			p[3] == '\x01' &&
+			p[4] == '\x00' &&
+			p[5] == ']' {
+			return RGB
+		}
+	case '\x59':
+		if p[1] == '\xa6' && p[2] == '\x6a' && p[3] == '\x95' {
+			return RAS
+		}
+	case '\x0a':
+		if p[2] == '\x01' {
+			return PCX
+		}
+	}
+
+	return Unknown
+}
+
 // Info holds the type and dismissons of an image
 type Info struct {
 	Type   Type
