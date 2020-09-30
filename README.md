@@ -2,6 +2,12 @@
 
 [![godoc][godoc-img]][godoc] [![release][release-img]][release] [![goreport][goreport-img]][goreport] [![coverage][coverage-img]][coverage]
 
+## Features
+
+* Zero Dependencies - no std/3rd imports
+* High Performance - hand-wringing DFA instead of regex/wildcard expression
+* Widely Format - bmp/bpm/gif/jpeg/mng/pbm/pcx/pgm/png/ppm/psd/ras/tiff/webp/xbm/xpm
+
 ### Getting Started
 
 try on https://play.golang.org/p/8yHaCknD1Rm
